@@ -6,12 +6,77 @@ class MarkdownReader {
         this.directoryHandle = null;
         this.openFiles = new Map();
         this.activeFileId = 'untitled.md';
+        this.autoSaveTimeout = null;
+        this.isAutoSaving = false;
         
         this.initializeElements();
         this.attachEventListeners();
         this.initializeEditor();
         this.loadThemePreference();
         this.loadFontPreference();
+    }
+
+    scheduleAutoSave() {
+        // Clear existing timeout
+        if (this.autoSaveTimeout) {
+            clearTimeout(this.autoSaveTimeout);
+        }
+
+        // Schedule auto-save for 2 seconds after user stops typing
+        this.autoSaveTimeout = setTimeout(() => {
+            this.performAutoSave();
+        }, 2000);
+    }
+
+    async performAutoSave() {
+        const fileInfo = this.openFiles.get(this.activeFileId);
+        if (!fileInfo || !fileInfo.modified || !fileInfo.handle || this.isAutoSaving) {
+            return; // Don't auto-save new files, unmodified files, or if already saving
+        }
+
+        this.isAutoSaving = true;
+        this.showAutoSaveStatus('Saving...');
+
+        try {
+            // Get current content
+            const contentToSave = this.isEditMode ? this.htmlToMarkdown(this.editor.innerHTML) : fileInfo.content;
+            
+            // Save to file
+            const writable = await fileInfo.handle.createWritable();
+            await writable.write(contentToSave);
+            await writable.close();
+
+            // Update file info
+            fileInfo.content = contentToSave;
+            fileInfo.modified = false;
+            this.updateTabTitle();
+
+            this.showAutoSaveStatus('Saved', 2000);
+            console.log('Auto-saved:', fileInfo.name);
+
+        } catch (error) {
+            console.error('Auto-save failed:', error);
+            this.showAutoSaveStatus('Save failed', 3000);
+        }
+
+        this.isAutoSaving = false;
+    }
+
+    showAutoSaveStatus(message, duration = 0) {
+        // Update save button to show status
+        const saveBtn = this.saveBtn;
+        const originalHTML = saveBtn.innerHTML;
+        const originalTitle = saveBtn.title;
+
+        saveBtn.innerHTML = `<i class="fas fa-circle" style="font-size: 6px; margin-right: 4px; color: ${message === 'Saved' ? '#059669' : message === 'Save failed' ? '#dc2626' : '#f59e0b'}"></i><span style="font-size: 10px;">${message}</span>`;
+        saveBtn.title = message;
+
+        if (duration > 0) {
+            setTimeout(() => {
+                saveBtn.innerHTML = originalHTML;
+                saveBtn.title = originalTitle;
+            }, duration);
+        }
     }
 
     initializeElements() {
@@ -36,6 +101,7 @@ class MarkdownReader {
         // Editor events
         this.editor.addEventListener('input', () => {
             this.markFileAsModified();
+            this.scheduleAutoSave();
         });
 
         // Keyboard shortcuts
@@ -252,7 +318,13 @@ class MarkdownReader {
         return markdown;
     }
 
-    toggleEditMode() {
+    async toggleEditMode() {
+        // Auto-save before switching modes
+        if (!this.isEditMode) {
+            // About to enter edit mode - save current content
+            await this.performAutoSave();
+        }
+        
         this.isEditMode = !this.isEditMode;
         
         console.log(`Toggling edit mode: ${this.isEditMode ? 'ON' : 'OFF'}`);
@@ -292,6 +364,9 @@ class MarkdownReader {
                 // Convert HTML back to markdown (simplified approach)
                 fileInfo.content = this.htmlToMarkdown(this.editor.innerHTML);
                 this.markFileAsModified();
+                
+                // Auto-save when leaving edit mode
+                await this.performAutoSave();
             }
             
             this.editorPane.style.display = 'none';
@@ -558,7 +633,10 @@ class MarkdownReader {
         this.tabContainer.appendChild(tab);
     }
 
-    switchToFile(fileId) {
+    async switchToFile(fileId) {
+        // Auto-save current file before switching
+        await this.performAutoSave();
+        
         // Update active file
         this.activeFileId = fileId;
         
