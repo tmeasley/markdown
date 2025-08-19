@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Library</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Inter:wght@300;400;500;600&family=Open+Sans:wght@300;400;500;600&family=Lato:wght@300;400;700&family=Source+Sans+Pro:wght@300;400;600&family=Crimson+Text:wght@400;600&family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3><i class="fas fa-book"></i> Library</h3>
+                <div class="sidebar-actions">
+                    <button class="btn-icon" id="newFileBtn" title="New Document">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button class="btn-icon" id="openFolderBtn" title="Open Library">
+                        <i class="fas fa-folder-open"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="file-tree" id="fileTree">
+                <div class="no-folder">
+                    <i class="fas fa-book"></i>
+                    <p>Open your document library</p>
+                    <small>Only your markdown files will appear here</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="sidebar-resizer" id="sidebarResizer"></div>
+        
+        <div class="main-content">
+            <div class="editor-header">
+                <div class="tab-container" id="tabContainer">
+                    <div class="tab active" data-file="untitled.md">
+                        <span class="tab-name">Untitled</span>
+                        <span class="tab-close" title="Close">×</span>
+                    </div>
+                </div>
+                <div class="editor-actions">
+                    <button class="btn-icon" id="saveBtn" title="Save">
+                        <i class="fas fa-save"></i>
+                    </button>
+                    <button class="btn-icon" id="editToggle" title="Edit Mode">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <div class="theme-selector">
+                        <select id="themeSelector" title="Choose Theme">
+                            <option value="warm-cream">Cream</option>
+                            <option value="midnight-dark">Midnight</option>
+                            <option value="ocean-blue">Ocean</option>
+                            <option value="forest-green">Forest</option>
+                            <option value="sunset-orange">Sunset</option>
+                            <option value="lavender-purple">Lavender</option>
+                            <option value="soft-gray">Gray</option>
+                        </select>
+                    </div>
+                    <div class="font-selector">
+                        <select id="fontSelector" title="Choose Font">
+                            <option value="theme-default">Theme Font</option>
+                            <option value="roboto">Roboto</option>
+                            <option value="inter">Inter</option>
+                            <option value="open-sans">Open Sans</option>
+                            <option value="lato">Lato</option>
+                            <option value="source-sans">Source Sans</option>
+                            <option value="georgia">Georgia</option>
+                            <option value="crimson">Crimson</option>
+                            <option value="merriweather">Merriweather</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="editor-container">
+                <div class="editor-pane" id="editorPane" style="display: none;">
+                    <div 
+                        id="markdownEditor" 
+                        contenteditable="true"
+                        class="rich-editor"
+                        data-placeholder="Start writing your document here..."
+                        spellcheck="false"
+                    ></div>
+                </div>
+                
+                <div class="preview-pane" id="previewPane">
+                    <div class="markdown-content" id="markdownPreview"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
