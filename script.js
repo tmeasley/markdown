@@ -87,6 +87,7 @@ class MarkdownReader {
         this.fileTree = document.getElementById('fileTree');
         this.tabContainer = document.getElementById('tabContainer');
         this.editToggle = document.getElementById('editToggle');
+        this.toolbarToggle = document.getElementById('toolbarToggle');
         this.saveBtn = document.getElementById('saveBtn');
         this.newFileBtn = document.getElementById('newFileBtn');
         this.openFolderBtn = document.getElementById('openFolderBtn');
@@ -100,9 +101,35 @@ class MarkdownReader {
     attachEventListeners() {
         // Editor events
         this.editor.addEventListener('input', () => {
-            this.markFileAsModified();
+            // Update file content in real-time when editing
+            const fileInfo = this.openFiles.get(this.activeFileId);
+            if (fileInfo && this.isEditMode) {
+                fileInfo.content = this.htmlToMarkdown(this.editor.innerHTML);
+                fileInfo.modified = true;
+                this.updateTabTitle();
+            }
             this.scheduleAutoSave();
         });
+
+        // Update toolbar state when cursor moves
+        this.editor.addEventListener('keyup', () => {
+            if (this.isEditMode) this.updateToolbarState();
+        });
+        this.editor.addEventListener('mouseup', () => {
+            if (this.isEditMode) this.updateToolbarState();
+        });
+
+        // Toolbar events
+        const toolbar = document.getElementById('formattingToolbar');
+        if (toolbar) {
+            toolbar.addEventListener('click', (e) => {
+                if (e.target.closest('.toolbar-btn')) {
+                    const btn = e.target.closest('.toolbar-btn');
+                    const format = btn.dataset.format;
+                    this.applyFormat(format);
+                }
+            });
+        }
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
@@ -130,6 +157,7 @@ class MarkdownReader {
 
         // Button events
         this.editToggle.addEventListener('click', () => this.toggleEditMode());
+        this.toolbarToggle.addEventListener('click', () => this.toggleToolbar());
         this.saveBtn.addEventListener('click', () => this.saveFile());
         this.newFileBtn.addEventListener('click', () => this.newFile());
         this.openFolderBtn.addEventListener('click', () => this.openFolder());
@@ -279,6 +307,144 @@ class MarkdownReader {
         }
     }
 
+    applyFormat(format) {
+        this.editor.focus();
+        
+        switch (format) {
+            case 'p':
+            case 'h1':
+            case 'h2':
+            case 'h3':
+            case 'blockquote':
+                this.applyBlockFormat(format);
+                break;
+            case 'bold':
+                document.execCommand('bold', false);
+                break;
+            case 'italic':
+                document.execCommand('italic', false);
+                break;
+            case 'strikethrough':
+                document.execCommand('strikeThrough', false);
+                break;
+            case 'ul':
+                document.execCommand('insertUnorderedList', false);
+                break;
+            case 'ol':
+                document.execCommand('insertOrderedList', false);
+                break;
+        }
+        
+        // Update toolbar button states
+        setTimeout(() => this.updateToolbarState(), 10);
+        
+        // Mark file as modified after formatting
+        this.markFileAsModified();
+        this.scheduleAutoSave();
+    }
+
+    applyBlockFormat(format) {
+        const selection = window.getSelection();
+        if (selection.rangeCount === 0) return;
+        
+        const range = selection.getRangeAt(0);
+        let currentElement = range.startContainer;
+        
+        // Find the block-level element
+        while (currentElement && currentElement.nodeType !== Node.ELEMENT_NODE) {
+            currentElement = currentElement.parentNode;
+        }
+        
+        // Find the closest block element
+        while (currentElement && !this.isBlockElement(currentElement)) {
+            currentElement = currentElement.parentNode;
+        }
+        
+        if (!currentElement || currentElement === this.editor) {
+            // If no block element found, use formatBlock
+            document.execCommand('formatBlock', false, format);
+            return;
+        }
+        
+        // Check if we're toggling the same format
+        const currentTag = currentElement.tagName.toLowerCase();
+        const targetTag = format.toLowerCase();
+        
+        if (currentTag === targetTag) {
+            // Toggle off - convert to paragraph
+            const newP = document.createElement('p');
+            newP.innerHTML = currentElement.innerHTML;
+            currentElement.parentNode.replaceChild(newP, currentElement);
+            
+            // Restore selection
+            const newRange = document.createRange();
+            newRange.selectNodeContents(newP);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+        } else {
+            // Change to new format
+            const newElement = document.createElement(targetTag);
+            newElement.innerHTML = currentElement.innerHTML;
+            currentElement.parentNode.replaceChild(newElement, currentElement);
+            
+            // Restore selection
+            const newRange = document.createRange();
+            newRange.selectNodeContents(newElement);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+        }
+    }
+
+    isBlockElement(element) {
+        const blockTags = ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'ul', 'ol', 'li'];
+        return blockTags.includes(element.tagName.toLowerCase());
+    }
+
+    updateToolbarState() {
+        const toolbar = document.getElementById('formattingToolbar');
+        if (!toolbar) return;
+        
+        // Reset all buttons
+        toolbar.querySelectorAll('.toolbar-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Check current selection state and update buttons
+        if (document.queryCommandState('bold')) {
+            toolbar.querySelector('[data-format="bold"]')?.classList.add('active');
+        }
+        if (document.queryCommandState('italic')) {
+            toolbar.querySelector('[data-format="italic"]')?.classList.add('active');
+        }
+        if (document.queryCommandState('strikeThrough')) {
+            toolbar.querySelector('[data-format="strikethrough"]')?.classList.add('active');
+        }
+        
+        // Check block format
+        const formatBlock = document.queryCommandValue('formatBlock');
+        if (formatBlock === 'h1') {
+            toolbar.querySelector('[data-format="h1"]')?.classList.add('active');
+        } else if (formatBlock === 'h2') {
+            toolbar.querySelector('[data-format="h2"]')?.classList.add('active');
+        } else if (formatBlock === 'h3') {
+            toolbar.querySelector('[data-format="h3"]')?.classList.add('active');
+        } else if (formatBlock === 'blockquote') {
+            toolbar.querySelector('[data-format="blockquote"]')?.classList.add('active');
+        } else if (formatBlock === 'p' || formatBlock === 'div' || !formatBlock) {
+            toolbar.querySelector('[data-format="p"]')?.classList.add('active');
+        }
+        
+        // Check lists
+        if (document.queryCommandState('insertUnorderedList')) {
+            toolbar.querySelector('[data-format="ul"]')?.classList.add('active');
+        }
+        if (document.queryCommandState('insertOrderedList')) {
+            toolbar.querySelector('[data-format="ol"]')?.classList.add('active');
+        }
+    }
+
     htmlToMarkdown(html) {
         // Simple HTML to Markdown conversion
         let markdown = html;
@@ -339,6 +505,7 @@ class MarkdownReader {
             this.editorContainer.classList.add('edit-mode');
             this.editToggle.innerHTML = '<i class="fas fa-book-open"></i>';
             this.editToggle.title = 'Reading Mode';
+            this.toolbarToggle.style.display = 'inline-block';
             
             // Make sure editor has current content
             const fileInfo = this.openFiles.get(this.activeFileId);
@@ -374,7 +541,24 @@ class MarkdownReader {
             this.editorContainer.classList.remove('edit-mode');
             this.editToggle.innerHTML = '<i class="fas fa-edit"></i>';
             this.editToggle.title = 'Edit Mode';
+            this.toolbarToggle.style.display = 'none';
+            // Hide toolbar when leaving edit mode
+            document.getElementById('formattingToolbar').style.display = 'none';
             this.updatePreview();
+        }
+    }
+
+    toggleToolbar() {
+        const toolbar = document.getElementById('formattingToolbar');
+        const isVisible = toolbar.style.display !== 'none';
+        
+        if (isVisible) {
+            toolbar.style.display = 'none';
+            this.toolbarToggle.style.opacity = '0.6';
+        } else {
+            toolbar.style.display = 'flex';
+            this.toolbarToggle.style.opacity = '1';
+            this.updateToolbarState();
         }
     }
 
@@ -685,9 +869,12 @@ class MarkdownReader {
         const timestamp = Date.now();
         const fileId = `untitled-${timestamp}.md`;
         
+        // Start with a template that has a title area and content area
+        const template = '# Document Title\n\nStart writing your content here...';
+        
         this.openFiles.set(fileId, {
             name: 'Untitled',
-            content: '',
+            content: template,
             modified: false,
             handle: null
         });
@@ -768,7 +955,10 @@ class MarkdownReader {
         const fileInfo = this.openFiles.get(this.activeFileId);
         if (fileInfo && !fileInfo.modified) {
             fileInfo.modified = true;
-            fileInfo.content = this.editor.value;
+            // Update content based on current mode
+            if (this.isEditMode) {
+                fileInfo.content = this.htmlToMarkdown(this.editor.innerHTML);
+            }
             this.updateTabTitle();
         }
     }
