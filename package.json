@@ -52,7 +52,7 @@
         }
       ],
       "icon": "assets/icon.ico",
-      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "artifactName": "${productName}-${version}-${arch}-Setup.${ext}",
       "fileAssociations": [
         {
           "ext": [
@@ -66,6 +66,9 @@
           "icon": "assets/icon.ico"
         }
       ]
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-${arch}-Portable.${ext}"
     },
     "nsis": {
       "oneClick": false,
