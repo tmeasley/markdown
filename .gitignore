@@ -25,6 +25,8 @@ Thumbs.db
 Thumbs.db
 desktop.ini
 
+nul
+
 # Local settings
 .env
 .env.local
