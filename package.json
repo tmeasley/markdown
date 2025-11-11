@@ -52,7 +52,20 @@
         }
       ],
       "icon": "assets/icon.ico",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "fileAssociations": [
+        {
+          "ext": [
+            "md",
+            "markdown",
+            "txt"
+          ],
+          "name": "Prose Document",
+          "role": "Editor",
+          "description": "Markdown document opened with Prose",
+          "icon": "assets/icon.ico"
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,
