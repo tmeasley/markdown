@@ -561,8 +561,10 @@ body {
 
 /* Preview Styles */
 .markdown-content {
-    padding: 40px 50px;
-    max-width: 800px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 960px;
+    padding: 48px clamp(32px, 5vw, 80px);
     margin: 0 auto;
     font-family: var(--reading-font);
     line-height: 1.8;
