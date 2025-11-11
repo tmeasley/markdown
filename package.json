@@ -1,7 +1,7 @@
 {
-  "name": "markdown-reader",
+  "name": "prose",
   "version": "1.0.0",
-  "description": "Beautiful Document Library - A clean, distraction-free markdown reader and editor",
+  "description": "Prose - A clean, distraction-free markdown reader and editor for Windows",
   "main": "main.js",
   "scripts": {
     "start": "node scripts/run-electron.js .",
@@ -9,24 +9,28 @@
     "build": "electron-builder --win --x64 --arm64",
     "build:x64": "electron-builder --win --x64",
     "build:arm64": "electron-builder --win --arm64",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "smoke": "node scripts/smoke-test.js",
+    "lint": "npm run smoke"
   },
   "keywords": [
+    "prose",
     "markdown",
     "reader",
     "editor",
     "notes",
-    "documents"
+    "electron"
   ],
-  "author": "Your Name",
+  "author": "Taylor Measley",
   "license": "MIT",
   "devDependencies": {
     "electron": "^30.0.0",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^24.9.1",
+    "png-to-ico": "^3.0.1"
   },
   "build": {
-    "appId": "com.markdownreader.app",
-    "productName": "Markdown Reader",
+    "appId": "com.tmeasley.prose",
+    "productName": "Prose",
     "directories": {
       "output": "dist"
     },
@@ -55,7 +59,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Markdown Reader"
+      "shortcutName": "Prose"
     },
     "files": [
       "**/*",

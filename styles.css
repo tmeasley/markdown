@@ -699,6 +699,43 @@ body {
     margin: 24px 0;
 }
 
+.notification-toast {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    min-width: 240px;
+    max-width: 320px;
+    padding: 14px 18px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    background-color: #111827;
+    color: #f8fafc;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(16px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 999;
+    font-size: 0.95rem;
+}
+
+.notification-toast.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+.notification-toast.success {
+    background-color: #047857;
+}
+
+.notification-toast.warning {
+    background-color: #b45309;
+}
+
+.notification-toast.error {
+    background-color: #b91c1c;
+}
+
 /* Scrollbar Styles */
 ::-webkit-scrollbar {
     width: 8px;

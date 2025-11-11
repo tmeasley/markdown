@@ -9,6 +9,7 @@ class MarkdownReader {
         this.activeFileId = 'untitled.md';
         this.autoSaveTimeout = null;
         this.isAutoSaving = false;
+        this.notificationTimeout = null;
         this.isElectron = window.electronAPI?.isElectron || false;
         this.hasShownMarkdownFallbackWarning = false;
 
@@ -91,6 +92,31 @@ class MarkdownReader {
         }
     }
 
+    showNotification(message, type = 'info', duration = 4000) {
+        if (!this.notificationToast) {
+            console[type === 'error' ? 'error' : 'log'](message);
+            return;
+        }
+
+        const toast = this.notificationToast;
+        toast.textContent = message;
+        toast.classList.remove('info', 'success', 'warning', 'error');
+        toast.classList.add(type, 'visible');
+
+        if (this.notificationTimeout) {
+            clearTimeout(this.notificationTimeout);
+        }
+
+        if (duration > 0) {
+            this.notificationTimeout = setTimeout(() => this.hideNotification(), duration);
+        }
+    }
+
+    hideNotification() {
+        if (!this.notificationToast) return;
+        this.notificationToast.classList.remove('visible');
+    }
+
     initializeElements() {
         this.editor = document.getElementById('markdownEditor');
         this.preview = document.getElementById('markdownPreview');
@@ -108,6 +134,7 @@ class MarkdownReader {
         this.sidebarResizer = document.getElementById('sidebarResizer');
         this.themeSelector = document.getElementById('themeSelector');
         this.fontSelector = document.getElementById('fontSelector');
+        this.notificationToast = document.getElementById('notificationToast');
     }
 
     initializeElectronListeners() {
@@ -822,29 +849,23 @@ class MarkdownReader {
     }
 
     async openFolder() {
+        if (!this.isElectron) {
+            this.showNotification('Folder browsing is only available in the Prose desktop app.', 'warning');
+            return;
+        }
+
         try {
-            if (this.isElectron) {
-                // Use Electron dialog
-                console.log('[MarkdownReader] Electron openFolder dialog requested');
-                const folderPath = await window.electronAPI.openFolderDialog();
-                console.log('[MarkdownReader] Electron openFolder dialog result:', folderPath);
-                if (folderPath) {
-                    this.directoryPath = folderPath;
-                    await this.loadFileTree();
-                }
-            } else {
-                // Use browser File System Access API
-                if (!('showDirectoryPicker' in window)) {
-                    alert('File System Access API is not supported in this browser. Please use Chrome or Edge.');
-                    return;
-                }
-                this.directoryHandle = await window.showDirectoryPicker();
+            console.log('[MarkdownReader] Electron openFolder dialog requested');
+            const folderPath = await window.electronAPI.openFolderDialog();
+            console.log('[MarkdownReader] Electron openFolder dialog result:', folderPath);
+            if (folderPath) {
+                this.directoryPath = folderPath;
                 await this.loadFileTree();
             }
         } catch (error) {
             if (error.name !== 'AbortError') {
                 console.error('Error opening folder:', error);
-                alert('Error opening folder: ' + error.message);
+                this.showNotification('Error opening folder: ' + error.message, 'error');
             }
         }
     }
@@ -1136,7 +1157,7 @@ class MarkdownReader {
 
             // Check file size (prevent opening huge files)
             if (file.size > 10 * 1024 * 1024) { // 10MB limit
-                alert('File is too large to open (over 10MB)');
+                this.showNotification('File is too large to open (over 10MB)', 'warning');
                 return;
             }
 
@@ -1164,7 +1185,7 @@ class MarkdownReader {
                 message = 'File not found - it may have been moved or deleted';
             }
 
-            alert(message);
+            this.showNotification(message, 'error');
         }
     }
 
@@ -1176,7 +1197,7 @@ class MarkdownReader {
 
             // Check file size (prevent opening huge files)
             if (fileData.size > 10 * 1024 * 1024) { // 10MB limit
-                alert('File is too large to open (over 10MB)');
+                this.showNotification('File is too large to open (over 10MB)', 'warning');
                 return;
             }
 
@@ -1184,7 +1205,7 @@ class MarkdownReader {
 
         } catch (error) {
             console.error('Error opening file via Electron:', error);
-            alert('Could not open this file: ' + error.message);
+            this.showNotification('Could not open this file: ' + error.message, 'error');
         }
     }
 
@@ -1332,7 +1353,7 @@ class MarkdownReader {
             }
         } catch (error) {
             console.error('Error saving file:', error);
-            alert('Error saving file: ' + error.message);
+            this.showNotification('Error saving file: ' + error.message, 'error');
         }
     }
 
@@ -1342,74 +1363,46 @@ class MarkdownReader {
 
         const contentToSave = this.isEditMode ? this.htmlToMarkdown(this.editor.innerHTML) : fileInfo.content;
 
+        if (!this.isElectron) {
+            this.showNotification('Saving files is only available in the Prose desktop app.', 'warning');
+            return;
+        }
+
         try {
-            if (this.isElectron) {
-                // Use Electron's save dialog
-                const filePath = await window.electronAPI.saveFileDialog('untitled.md');
+            const filePath = await window.electronAPI.saveFileDialog('untitled.md');
 
-                if (filePath) {
-                    await window.electronAPI.writeFile(filePath, contentToSave);
-
-                    // Update file info
-                    const fileName = filePath.split(/[\\/]/).pop(); // Get filename from path
-                    const oldFileId = this.activeFileId;
-                    const newFileId = filePath;
-
-                    // Remove old entry and create new one
-                    this.openFiles.delete(oldFileId);
-                    this.openFiles.set(newFileId, {
-                        name: fileName.replace(/\.[^/.]+$/, ""),
-                        content: contentToSave,
-                        modified: false,
-                        path: filePath
-                    });
-
-                    // Update active file ID and tab
-                    this.activeFileId = newFileId;
-                    const tab = this.getTabElement(oldFileId);
-                    if (tab) {
-                        tab.dataset.file = newFileId;
-                    }
-
-                    this.updateTabTitle();
-                    console.log('File saved as:', filePath);
-                }
-            } else {
-                // Use browser File System Access API
-                if (!('showSaveFilePicker' in window)) {
-                    alert('File System Access API is not supported in this browser. Please use Chrome or Edge.');
-                    return;
-                }
-
-                const fileHandle = await window.showSaveFilePicker({
-                    suggestedName: 'untitled.md',
-                    types: [{
-                        description: 'Markdown files',
-                        accept: {
-                            'text/markdown': ['.md', '.markdown'],
-                            'text/plain': ['.txt']
-                        }
-                    }]
-                });
-
-                const writable = await fileHandle.createWritable();
-                await writable.write(contentToSave);
-                await writable.close();
+            if (filePath) {
+                await window.electronAPI.writeFile(filePath, contentToSave);
 
                 // Update file info
-                fileInfo.handle = fileHandle;
-                fileInfo.name = fileHandle.name.replace(/\.[^/.]+$/, "");
-                fileInfo.content = contentToSave;
-                fileInfo.modified = false;
+                const fileName = filePath.split(/[\\/]/).pop(); // Get filename from path
+                const oldFileId = this.activeFileId;
+                const newFileId = filePath;
+
+                // Remove old entry and create new one
+                this.openFiles.delete(oldFileId);
+                this.openFiles.set(newFileId, {
+                    name: fileName.replace(/\.[^/.]+$/, ""),
+                    content: contentToSave,
+                    modified: false,
+                    path: filePath
+                });
+
+                // Update active file ID and tab
+                this.activeFileId = newFileId;
+                const tab = this.getTabElement(oldFileId);
+                if (tab) {
+                    tab.dataset.file = newFileId;
+                }
 
                 this.updateTabTitle();
-                console.log('File saved as:', fileHandle.name);
+                console.log('File saved as:', filePath);
             }
 
         } catch (error) {
             if (error.name !== 'AbortError') {
                 console.error('Error saving file:', error);
-                alert('Error saving file: ' + error.message);
+                this.showNotification('Error saving file: ' + error.message, 'error');
             }
         }
     }
@@ -1454,7 +1447,7 @@ class MarkdownReader {
             this.addElectronFileToTabs(fileData.path, fileData.name, fileData.content);
         } catch (error) {
             console.error('Failed to open referenced file:', reference, error);
-            alert(`Could not open "${reference}". Make sure the file exists in the selected folder.`);
+            this.showNotification(`Could not open "${reference}". Make sure the file exists in the selected folder.`, 'error');
         }
     }
 }

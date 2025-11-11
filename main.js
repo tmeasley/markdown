@@ -25,6 +25,12 @@ async function ensureDataDirectories() {
     }
 }
 
+function logAppPaths() {
+    if (app.isPackaged) return;
+    console.log('[Prose] userData path:', app.getPath('userData'));
+    console.log('[Prose] cache path:', app.getPath('cache'));
+}
+
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1400,
@@ -298,6 +304,7 @@ function setupIpcHandlers() {
 // App lifecycle
 app.whenReady().then(async () => {
     await ensureDataDirectories();
+    logAppPaths();
     createWindow();
     setupIpcHandlers();
 });
